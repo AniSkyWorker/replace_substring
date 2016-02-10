@@ -4,85 +4,81 @@
 #include <string.h>
 #include <fstream>
 
+const std::streampos c_maxPos = 2147483648;
+
 struct ReplaceInterface
 {
-	std::ifstream inputFile;
-	std::ofstream outputFile;
-	std::string workString;
-
-	bool IsFileSizeIncorrect(std::string fileName)
+	bool IsFileSizeIncorrect(std::string& fileName)
 	{
 		std::fstream file(fileName, std::ios::in);
 		file.seekg(0, std::ios::end);
-		int sizeInBytes = static_cast<int>(file.tellg());
-		if (sizeInBytes > 2147483648)
+
+		if (file.tellg() > c_maxPos)
 		{
-			perror("Size of file > 2Gb!");
+			std::cout << "Error: Invalid size of input file (> 2Gb)";
 			return true;
 		}
+
 		return false;
 	}
 
-	bool IsNameIncorrect()
+	bool IsFileNameIncorrect(std::string& inputFileName)
 	{
+		std::ifstream inputFile(inputFileName);
 		if (!inputFile.is_open())
 		{
-			perror("Incorret name of file!");
+			std::cout << "Error: Invalid name of input file!";
 			return true;
 		}
 
 		return false;
 	}
 
-	bool replace(std::string inputFileName, std::string outputFileName, 
-		std::string oldSubstring, std::string newSubstring)
+	bool replace(std::string inputFileName, std::string outputFileName,
+		const std::string& oldSubstring, const std::string& newSubstring)
 	{
-		if (!IsFileSizeIncorrect(inputFileName))
-			inputFile.open(inputFileName);
-		else
+		if (IsFileSizeIncorrect(inputFileName))
 			return false;
 
-		if (!IsNameIncorrect())
-			outputFile.open(outputFileName);
-		else
+		if (IsFileNameIncorrect(inputFileName))
 			return false;
+
+		std::ifstream inputFile(inputFileName);
+		std::ofstream outputFile(outputFileName);
+		std::string workString;
 
 		while (!inputFile.eof())
 		{
 			std::getline(inputFile, workString);
+
 			if (workString.size() != 0)
 				boost::replace_all(workString, oldSubstring, newSubstring);
+
 			if (inputFile.peek() != EOF)
 				workString += "\n";
+
 			outputFile << workString;
 		}
+
+		if (!outputFile.flush())
+			std::cout << "Error: Failed writing to output file!";
+
 		return true;
 	}
-
-	void close()
-	{
-		inputFile.close();
-		outputFile.close();
-	}
-
 };
 
 int main (int argc, char *argv[])
 {
 	if (argc != 5)
 	{
-		perror("Incorrect number of arguments!");
+		std::cout << "Error: Invalid number of arguments!" << std::endl
+			<< "Usage: replace.exe <inputFile> <outputFile> <searchString> <replacmentString>";
 		return 1;
 	}
 
-	ReplaceInterface fInterface;
-	if(fInterface.replace(argv[1], argv [2], argv[3], argv[4]))
-		fInterface.close();
-	else 
-	{
-		fInterface.close();
+	ReplaceInterface replaceInterface;
+	if(!replaceInterface.replace(argv[1], argv[2], argv[3], argv[4]))
 		return 1;
-	}
 
     return 0;
 }
